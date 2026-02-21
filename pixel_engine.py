@@ -2,7 +2,7 @@
 # pixel_engine.py — 像素化核心算法（独立模块，方便扩展）
 # ============================================================
 
-from PIL import Image
+from PIL import Image, ImageFilter, ImageEnhance
 import io
 import math
 from config import GAMEBOY_PALETTE
@@ -44,6 +44,8 @@ def _apply_color_mode(img: Image.Image, color_mode: str, num_colors: int = None)
     """根据色彩模式处理颜色"""
     if color_mode == "full":
         return img
+    elif color_mode == "dave":
+        return _apply_dave_style(img)
     elif color_mode == "bw":
         return img.convert("L").convert("RGB")
     elif color_mode == "gameboy":
@@ -52,6 +54,46 @@ def _apply_color_mode(img: Image.Image, color_mode: str, num_colors: int = None)
         quantized = img.quantize(colors=num_colors, method=Image.Quantize.MAXCOVERAGE)
         return quantized.convert("RGB")
     return img
+
+
+def _apply_dave_style(img: Image.Image) -> Image.Image:
+    """潜水员戴夫风格：色彩增强 + 32色量化 + 像素块描边"""
+    # 1. 色彩增强：提升饱和度和对比度，让色块更鲜明
+    img = ImageEnhance.Color(img).enhance(1.5)
+    img = ImageEnhance.Contrast(img).enhance(1.3)
+
+    # 2. 32色量化，保持干净色块
+    img = img.quantize(colors=32, method=Image.Quantize.MAXCOVERAGE).convert("RGB")
+
+    # 3. 描边：检测边缘并叠加深色轮廓
+    img = _add_pixel_outline(img)
+    return img
+
+
+def _add_pixel_outline(img: Image.Image) -> Image.Image:
+    """在像素块边缘叠加深色描边（戴夫风格关键特征）"""
+    # 用边缘检测滤镜找出色块边界
+    edges = img.filter(ImageFilter.FIND_EDGES).convert("L")
+
+    # 将边缘二值化：超过阈值的像素视为边缘
+    threshold = 30
+    pixels_orig = img.load()
+    pixels_edge = edges.load()
+    result = img.copy()
+    result_pixels = result.load()
+    w, h = img.size
+
+    for y in range(h):
+        for x in range(w):
+            if pixels_edge[x, y] > threshold:
+                # 边缘像素：取原色并压暗为深色描边
+                r, g, b = pixels_orig[x, y]
+                dark_r = max(0, int(r * 0.25))
+                dark_g = max(0, int(g * 0.25))
+                dark_b = max(0, int(b * 0.25))
+                result_pixels[x, y] = (dark_r, dark_g, dark_b)
+
+    return result
 
 
 def _apply_palette(img: Image.Image, palette: list) -> Image.Image:

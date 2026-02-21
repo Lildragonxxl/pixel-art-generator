@@ -18,13 +18,14 @@ PIXEL_SIZE_DEFAULT = 16
 
 # 色彩风格定义
 COLOR_MODES = {
-    "full":     {"label": "全彩",     "colors": None},
-    "64color":  {"label": "64 色",    "colors": 64},
-    "32color":  {"label": "32 色",    "colors": 32},
-    "16color":  {"label": "16 色",    "colors": 16},
-    "8color":   {"label": "8 色",     "colors": 8},
-    "gameboy":  {"label": "GameBoy",  "colors": None},  # 特殊调色板
-    "bw":       {"label": "黑白",     "colors": 2},
+    "full":     {"label": "全彩",       "colors": None},
+    "dave":     {"label": "🎮 戴夫风格", "colors": None},
+    "64color":  {"label": "64 色",      "colors": 64},
+    "32color":  {"label": "32 色",      "colors": 32},
+    "16color":  {"label": "16 色",      "colors": 16},
+    "8color":   {"label": "8 色",       "colors": 8},
+    "gameboy":  {"label": "GameBoy",    "colors": None},
+    "bw":       {"label": "黑白",       "colors": 2},
 }
 
 # GameBoy 调色板（4色）
