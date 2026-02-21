@@ -54,14 +54,21 @@
       </div>
     </div>
 
-    <!-- 透明背景 -->
+    <!-- 背景移除 -->
     <div class="control-group">
-      <div class="control-label">透明背景</div>
+      <div class="control-label">背景处理</div>
       <div class="format-toggle">
-        <button class="alpha-btn active" data-alpha="false">保留原背景</button>
-        <button class="alpha-btn" data-alpha="true">保留透明度</button>
+        <button class="alpha-btn active" data-alpha="false">保留背景</button>
+        <button class="alpha-btn" data-alpha="true">移除背景</button>
       </div>
-      <p class="hint">仅对原图含透明通道的 PNG 有效</p>
+      <div id="bg-tolerance-wrap" style="display:none; margin-top:12px;">
+        <div class="control-label">
+          容差范围
+          <span id="bg-tol-val">30</span>
+        </div>
+        <input type="range" id="bg-tolerance" min="5" max="80" value="30" step="5">
+        <p class="hint">数值越大，移除范围越广</p>
+      </div>
     </div>
 
     <!-- 导出格式 -->

@@ -35,12 +35,14 @@ def process():
     color_mode = request.form.get("color_mode", "full")
     export_format = request.form.get("export_format", "png")
     keep_alpha = request.form.get("keep_alpha", "false") == "true"
+    remove_bg = request.form.get("remove_bg", "false") == "true"
+    bg_tolerance = int(request.form.get("bg_tolerance", 30))
 
     num_colors = COLOR_MODES.get(color_mode, {}).get("colors")
 
     try:
         img = Image.open(file.stream)
-        result = pixelate(img, pixel_size, color_mode, num_colors, keep_alpha)
+        result = pixelate(img, pixel_size, color_mode, num_colors, keep_alpha, remove_bg, bg_tolerance)
 
         if export_format == "svg":
             svg_str = to_svg_string(result, pixel_size)

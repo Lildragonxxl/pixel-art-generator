@@ -9,7 +9,8 @@ from config import GAMEBOY_PALETTE
 
 
 def pixelate(image: Image.Image, pixel_size: int, color_mode: str,
-             num_colors: int = None, keep_alpha: bool = False) -> Image.Image:
+             num_colors: int = None, keep_alpha: bool = False,
+             remove_bg: bool = False, bg_tolerance: int = 30) -> Image.Image:
     """主入口：对图片进行像素化处理"""
     has_alpha = image.mode in ("RGBA", "LA", "PA") and keep_alpha
 
@@ -22,12 +23,17 @@ def pixelate(image: Image.Image, pixel_size: int, color_mode: str,
         rgb = _apply_color_mode(rgb, color_mode, num_colors)
         result = rgb.convert("RGBA")
         result.putalpha(alpha)
-        return result
     else:
         img = image.convert("RGB")
         img = _pixelate_grid(img, pixel_size)
         img = _apply_color_mode(img, color_mode, num_colors)
-        return img
+        result = img
+
+    # 背景移除（像素化后处理）
+    if remove_bg:
+        result = remove_background(result, bg_tolerance)
+
+    return result
 
 
 def _pixelate_grid(img: Image.Image, pixel_size: int) -> Image.Image:
@@ -57,41 +63,73 @@ def _apply_color_mode(img: Image.Image, color_mode: str, num_colors: int = None)
 
 
 def _apply_dave_style(img: Image.Image) -> Image.Image:
-    """潜水员戴夫风格：色彩增强 + 32色量化 + 像素块描边"""
-    # 1. 色彩增强：提升饱和度和对比度，让色块更鲜明
-    img = ImageEnhance.Color(img).enhance(1.5)
-    img = ImageEnhance.Contrast(img).enhance(1.3)
+    """潜水员戴夫风格：高饱和卡通色 + 32色量化 + 纯黑描边"""
+    # 1. 先平滑，减少量化后的噪点
+    img = img.filter(ImageFilter.SMOOTH)
 
-    # 2. 32色量化，保持干净色块
+    # 2. 大幅提升饱和度（卡通化）+ 对比度
+    img = ImageEnhance.Color(img).enhance(1.8)
+    img = ImageEnhance.Contrast(img).enhance(1.4)
+    img = ImageEnhance.Brightness(img).enhance(1.05)
+
+    # 3. 32色量化，保持干净色块
     img = img.quantize(colors=32, method=Image.Quantize.MAXCOVERAGE).convert("RGB")
 
-    # 3. 描边：检测边缘并叠加深色轮廓
-    img = _add_pixel_outline(img)
+    # 4. 纯黑描边（只在色块边界）
+    img = _add_black_outline(img)
     return img
 
 
-def _add_pixel_outline(img: Image.Image) -> Image.Image:
-    """在像素块边缘叠加深色描边（戴夫风格关键特征）"""
-    # 用边缘检测滤镜找出色块边界
-    edges = img.filter(ImageFilter.FIND_EDGES).convert("L")
+def _add_black_outline(img: Image.Image) -> Image.Image:
+    """在色块边界叠加纯黑描边"""
+    # 先平滑再检测，避免量化噪点产生多余边缘
+    smooth = img.filter(ImageFilter.SMOOTH_MORE)
+    edges = smooth.filter(ImageFilter.FIND_EDGES).convert("L")
 
-    # 将边缘二值化：超过阈值的像素视为边缘
-    threshold = 30
-    pixels_orig = img.load()
     pixels_edge = edges.load()
     result = img.copy()
     result_pixels = result.load()
     w, h = img.size
+    threshold = 20
 
     for y in range(h):
         for x in range(w):
             if pixels_edge[x, y] > threshold:
-                # 边缘像素：取原色并压暗为深色描边
-                r, g, b = pixels_orig[x, y]
-                dark_r = max(0, int(r * 0.25))
-                dark_g = max(0, int(g * 0.25))
-                dark_b = max(0, int(b * 0.25))
-                result_pixels[x, y] = (dark_r, dark_g, dark_b)
+                result_pixels[x, y] = (0, 0, 0)  # 纯黑描边
+
+    return result
+
+
+def remove_background(img: Image.Image, tolerance: int = 30) -> Image.Image:
+    """从四角采样背景色，将接近背景色的像素变为透明"""
+    from collections import Counter
+    rgb = img.convert("RGB")
+    result = img.convert("RGBA")
+    pixels_rgb = rgb.load()
+    pixels_result = result.load()
+    w, h = img.size
+
+    # 从四角各采样一小块，找出最常见颜色作为背景色
+    sample = max(1, min(w, h) // 12)
+    corners = []
+    for x in range(sample):
+        for y in range(sample):
+            corners.append(pixels_rgb[x, y])
+            corners.append(pixels_rgb[w - 1 - x, y])
+            corners.append(pixels_rgb[x, h - 1 - y])
+            corners.append(pixels_rgb[w - 1 - x, h - 1 - y])
+
+    bg_color = Counter(corners).most_common(1)[0][0]
+    br, bg, bb = bg_color
+
+    # 将接近背景色的像素设为透明
+    tol_sq = tolerance ** 2
+    for y in range(h):
+        for x in range(w):
+            r, g, b = pixels_rgb[x, y]
+            dist_sq = (r - br) ** 2 + (g - bg) ** 2 + (b - bb) ** 2
+            if dist_sq <= tol_sq:
+                pixels_result[x, y] = (r, g, b, 0)
 
     return result
 

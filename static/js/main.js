@@ -20,10 +20,15 @@ const placeholder     = document.getElementById("placeholder");
 const quickPreviewWrap = document.getElementById("quick-preview-wrap");
 const quickPreviewImg  = document.getElementById("quick-preview-img");
 
+const bgToleranceWrap = document.getElementById("bg-tolerance-wrap");
+const bgToleranceSlider = document.getElementById("bg-tolerance");
+const bgTolVal = document.getElementById("bg-tol-val");
+
 let selectedFile   = null;
 let selectedMode   = "full";
 let selectedFormat = "png";
 let keepAlpha      = false;
+let removeBg       = false;
 let resultData     = null;
 let resultFormat   = null;
 let previewTimer   = null;
@@ -58,8 +63,14 @@ document.querySelectorAll(".alpha-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".alpha-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    keepAlpha = btn.dataset.alpha === "true";
+    removeBg = btn.dataset.alpha === "true";
+    bgToleranceWrap.style.display = removeBg ? "block" : "none";
   });
+});
+
+// ── 容差滑块 ──
+bgToleranceSlider.addEventListener("input", () => {
+  bgTolVal.textContent = bgToleranceSlider.value;
 });
 
 // ── 拖拽上传 ──
@@ -137,6 +148,8 @@ processBtn.addEventListener("click", async () => {
   formData.append("color_mode", selectedMode);
   formData.append("export_format", selectedFormat);
   formData.append("keep_alpha", keepAlpha ? "true" : "false");
+  formData.append("remove_bg", removeBg ? "true" : "false");
+  formData.append("bg_tolerance", bgToleranceSlider.value);
 
   loading.classList.add("show");
   processBtn.disabled = true;
